@@ -19,6 +19,7 @@ package minicp.engine.constraints;
 import static minicp.cp.Factory.*;
 import minicp.engine.core.Constraint;
 import minicp.engine.core.IntVar;
+import minicp.engine.core.IntVarImpl;
 import minicp.reversible.ReversibleInt;
 import minicp.util.InconsistencyException;
 import minicp.util.NotImplementedException;
@@ -52,9 +53,38 @@ public class Circuit extends Constraint {
     @Override
     public void post() throws InconsistencyException {
         cp.post(allDifferent(x));
-        throw new NotImplementedException("Circuit");
-        // TODO
-        // Hint: use x[i].whenBind(...) to call the bind
+        for (int i=0; i< x.length; i++){
+            x[i].remove(i);
+        }
+        boolean end = false;
+        for (int i=0; i< lengthToDest.length; i++){
+            if (lengthToDest[i].getValue()==x.length-1){
+                end = true;
+            }
+        }
+        if (!end) {
+            for (int i = 0; i < dest.length; i++) {
+                x[dest[i].getValue()].remove(orig[i].getValue());
+            }
+        }
+
+    }
+
+    public void propagate() throws InconsistencyException {
+        for (int i=0; i< x.length; i++){
+            x[i].remove(i);
+        }
+        boolean end = false;
+        for (int i=0; i< lengthToDest.length; i++){
+            if (lengthToDest[i].getValue()==x.length-1){
+                end = true;
+            }
+        }
+        if (!end) {
+            for (int i = 0; i < dest.length; i++) {
+                x[dest[i].getValue()].remove(orig[i].getValue());
+            }
+        }
     }
 
 
