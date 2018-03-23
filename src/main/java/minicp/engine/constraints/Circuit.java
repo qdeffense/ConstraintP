@@ -53,6 +53,8 @@ public class Circuit extends Constraint {
     public void post() throws InconsistencyException {
         cp.post(allDifferent(x));
         throw new NotImplementedException("Circuit");
+
+
         // TODO
         // Hint: use x[i].whenBind(...) to call the bind
     }
