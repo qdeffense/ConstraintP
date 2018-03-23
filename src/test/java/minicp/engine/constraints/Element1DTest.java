@@ -21,6 +21,7 @@ import minicp.search.DFSearch;
 import minicp.search.SearchStatistics;
 import minicp.util.InconsistencyException;
 import minicp.util.NotImplementedException;
+import minicp.util.NotImplementedExceptionAssume;
 import org.junit.Test;
 
 import static minicp.cp.Factory.makeIntVar;
@@ -34,7 +35,7 @@ import static org.junit.Assert.fail;
 public class Element1DTest {
 
     @Test
-    public void element1dTest1() { //Test
+    public void element1dTest1() {
         try {
             try {
 
@@ -68,7 +69,7 @@ public class Element1DTest {
                 fail("should not fail");
             }
         } catch (NotImplementedException e) {
-            e.print();
+            NotImplementedExceptionAssume.fail(e);
         }
     }
 
@@ -99,7 +100,7 @@ public class Element1DTest {
                 fail("should not fail");
             }
         } catch (NotImplementedException e) {
-            e.print();
+            NotImplementedExceptionAssume.fail(e);
         }
     }
 
@@ -128,7 +129,7 @@ public class Element1DTest {
                 fail("should not fail");
             }
         } catch (NotImplementedException e) {
-            e.print();
+            NotImplementedExceptionAssume.fail(e);
         }
     }
 
@@ -156,7 +157,7 @@ public class Element1DTest {
                 fail("should not fail");
             }
         } catch (NotImplementedException e) {
-            e.print();
+            NotImplementedExceptionAssume.fail(e);
         }
     }
 }

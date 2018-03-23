@@ -36,35 +36,7 @@ public class IsLessOrEqual extends Constraint { // b <=> x <= c
 
     @Override
     public void post() throws InconsistencyException {
-        if (b.isBound()) {
-            if (b.isTrue())
-                x.removeAbove(c);
-            else
-                x.removeBelow(c+1);
-        } else if (x.getMax()<=c)
-            b.assign(true);
-        else if (x.getMin()>c)
-            b.assign(false);
-        else {
-            x.propagateOnBoundChange(this);
-            b.propagateOnBind(this);
-        }
-    }
-
-    @Override
-    public void propagate() throws InconsistencyException {
-        if (b.isBound()) {
-            if (b.isTrue())
-                x.removeAbove(c);
-            else
-                x.removeBelow(c+1);
-        } else if (x.getMax()<=c)
-            b.assign(true);
-        else if (x.getMin()>c)
-            b.assign(false);
-        else {
-            x.propagateOnBoundChange(this);
-            b.propagateOnBind(this);
-        }
+        // TODO
+        throw new NotImplementedException("IsLessOrEqual");
     }
 }

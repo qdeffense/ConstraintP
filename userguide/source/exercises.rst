@@ -64,26 +64,199 @@ DFS Explicit Stack
 The search algorithm of mini-cp is *depth-first-search*.
 It is implemented using a recursive method in the class
 `DFSSearch.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/search/DFSearch.java?at=master>`_.
-To avoid any `stack-overflow` exception due to a deep recursion in Java
-you are ask to reimplement the depth-first-search with an explicit stack
-of `Alternative` objects.
+To avoid any `stack-overflow` exception due to too a deep recursion in Java
+we ask you to reimplement the depth-first-search with an explicit stack
+of instead of relying on the recursion call stack.
+
+Consider the following search tree where alternatives to execute are represented as letters. 
 
 
+.. image:: _static/dfs.svg
+    :scale: 50
+    :width: 250
+    :alt: DFS
+
+A DFS exploration should executes the alternative in the following order `A->D->E->B->C->F->G`.
+On backtrack, the state should be restored and therefore these successive executions of the alternatives
+should be interleaved with 'push' and 'pop' operations on the trail.
+For instance a valid sequence for restoring the states on backtrack is the following:
+`push->A->push->D->pop->push->E->pop->pop->push->B->pop->push->C->push->F->pop->push->G->pop->pop`.
+The `push` operations are executed in pre-order fashion while the `pop` operations are executed in a post-order fashion.
+This is highlighted in the recursive dfs code given next.
+
+.. code-block:: java
+   :emphasize-lines: 10, 13, 19
+
+    private void dfs(SearchStatistics statistics, SearchLimit limit) {
+        if (limit.stopSearch(statistics)) throw new StopSearchException();
+        Alternative [] alternatives = choice.call(); // generate the alternatives
+        if (alternatives.length == 0) {
+            statistics.nSolutions++;
+            notifySolutionFound();
+        }
+        else {
+            for (Alternative alt : alternatives) {
+                state.push(); // pre-order
+                try {
+                    statistics.nNodes++;
+                    alt.call(); // call the alternative
+                    dfs(statistics,limit);
+                } catch (InconsistencyException e) {
+                    notifyFailure();
+                    statistics.nFailures++;
+                }
+                state.pop(); // post-order
+            }
+        }
+    }
+
+A skeletton of solution is given next but you don't have to follow exactly this solution since there are many ways
+to implement it.
+
+.. code-block:: java
+   :emphasize-lines: 3
+
+    private void dfs(SearchStatistics statistics, SearchLimit limit) {
+        Stack<Alternative> alternatives = new Stack<Alternative>();
+        expandNode(alternatives,statistics); // root expension
+        while (!alternatives.isEmpty()) {
+            if (limit.stopSearch(statistics)) throw new StopSearchException();
+            try {
+                alternatives.pop().call();
+            } catch (InconsistencyException e) {
+                notifyFailure();
+                statistics.nFailures++;
+            }
+        }
+    }
+    private void expandNode(Stack<Alternative> alternatives, SearchStatistics statistics) {
+       // TODO
+    }
+
+The idea of this solution is wrap the push/pop/alternative execution inside `Alternative` closure objects
+as illustrated on the next figure showing the stack after the root node expansion at line 3. 
+
+.. image:: _static/stackalternatives.svg
+    :scale: 50
+    :width: 250
+    :alt: DFS
+    
+    
+    
 Check that your implementation passes the tests `DFSearchTest.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/test/java/minicp/search/DFSearchTest.java?at=master>`_
 
 
+Remark (optional): It is actually possible to reduce the number of operations on the trail 
+by skipping the push on a last branch at a given node. 
+The sequence of operations becomes `push->push->A->push->D->pop->E->pop->push->B->pop->C->push->F->pop->G->pop`.
 
+
+
+Domain with an arbitrary set of values
+=================================================================================
+
+Implement the missing constructor in `IntVarImpl.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/engine/core/IntVarImpl.java?at=master>`_
+
+
+.. code-block:: java
+
+    public IntVarImpl(Solver cp, Set<Integer> values) {
+        throw new NotImplementedException();
+    }
+
+
+This exercise is straightforward: just create a dense domain then remove the values not present in the set.
+
+Check that your implementation passes the tests `IntVarTest.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/test/java/minicp/engine/core/IntVarTest.java?at=master>`_
+
+
+Implement a domain iterator
+======================================
+
+Many filtering algorithms require to iterate over the values of a domain.
+The `fillArray` method from `ReversibleSparseSet.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/minicp/reversible/ReversibleSparseSet.java?at=master>`_
+allows to fill an array with all the values present in the sparse-set relying on the very efficient 'System.arraycopy'.
+
+.. code-block:: java
+
+    /**
+     * set the first values of <code>dest</code> to the ones
+     * present in the set
+     * @param dest, an array large enough dest.length >= getSize()
+     * @return the size of the set
+     */
+    public int fillArray(int [] dest) {
+        int s = size.getValue();
+        System.arraycopy(values, 0, dest, 0, s);
+        return s;
+    }
+    
+    
+The main advantage over the iterator mechanism is that not object is created (and thus garbage collected). 
+Indeed `dest` is typically a container array stored as an instance variable and reused many times.
+This is important for efficiency to avoid creating objects on the heap at each execution of a propagator.
+Never forget that a 'propagate()' method of 'Constraint' may be called thousands of times per second.
+This implementation using `fillArray` avoids the `ConcurrentModificationException` discussion 
+when implementing an Iterator: should we allow to modify a domain while iterating on it ?
+The answer here is very clear: you get a snapshot of the domain at the time of the call to `fillArray` and you can thus
+safely iterate over this `dest` array and modifying the domain at the same time.
+
+
+To do:
+
+* Implement `public int fillArray(int [] dest)` in `IntVar.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/engine/core/IntVar.java?at=master>`_ As a consequence in all the classes implementing the interface. You may need to add implementations in other classes such as the domain implementation.
+* Check that your implementation passes the tests `IntVarTest.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/test/java/minicp/engine/core/IntVarTest.java?at=master>`_ add also add more tests.
+
+
+Implement a Custom Search
+=================================
+
+Modify the Quadratic Assignment Model `QAP.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/examples/QAP.java?at=master>`_
+to implement a custom search strategy. A skeleton for a custom search is the following one:
+
+
+.. code-block:: java
+
+        DFSearch dfs = makeDfs(cp,
+                selectMin(x,
+                        x -> x.getSize() > 1, // filter
+                        x -> x.getSize(), // variable selector
+                        xi -> {
+                            int v = xi.getMin(); // value selector (TODO)
+                            return branch(() -> equal(xi,v),
+                                    () -> notEqual(xi,v));
+                        }
+                ));
+                
+
+* As a variable heuristic, select the unbound variable `x[i]` (a facility `i` not yet assigned to a location) that has a maximum weight `w[i][j]` with another facility `j` (`x[j]` may be bound or not).
+* As a value heuristic, on the left branch, place this facility to on the location which is the closest possible to another location possible for facility `j`. On the right branch remove this value. 
+* Hint: `selectMin` is a generic method parameterized by 'T'. To implement this heuristic, adding pairs `(i,j)` as a type for `T` is probably the easiest way to go.
+
+   .. code-block:: java
+
+           public static <T> Choice selectMin(T[] x, Filter<T> p, ValueFun<T> f, BranchOn<T> body)             
+
+
+Experiment and modify LNS
+=================================================================
+
+Experiment the Quadratic Assignment Model with LNS `QAPLNS.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/examples/QAPLNS.java?at=master>`_
+
+* Does it converge faster to good solutions than the standard DFS ? Use the larger instance with 25 facilities.
+* What is the impact of the percentage of variables relaxed (experiment with 5, 10 and 20%) ?
+* What is the impact of the failure limit (experiment with 50, 100 and 1000)?
+* Which parameter setting work best? How would you choose it?
+* Imagine a different relaxation specific for this problem. Try to relax the decision variables that have the strongest impact on the objective (the relaxed variables should still be somehow randomized). You can for instance compute for each facility $i$: $sum_j d[x[i]][x[j]]*w[i][j]$ and base your decision to relax or not a facilities on those values. 
+
+
+    
 Element constraint
 =================================
 
 
 Implement `Element1D.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/engine/constraints/Element1D.java?at=master>`_
 
-
-Two possibilities:
-
-1. extends `Element2D` and reformulate `Element1D` as an `Element2D` constraint in super call of the constructor.
-2. implement a dedicated algo (propagate, etc) for `Element1D` by taking inspiration from `Element2D`.
 
 An element constraint is to index an array `T` by an index variable `x` and link the result with a variable `z`.
 More exactly the relation `T[x]=z` must hold.
@@ -105,6 +278,14 @@ but is violated for
 
 
 Check that your implementation passes the tests `Element1DTest.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/test/java/minicp/engine/constraints/Element1DTest.java?at=master>`_
+
+
+Two possibilities:
+
+1. extends `Element2D` and reformulate `Element1D` as an `Element2D` constraint in super call of the constructor.
+2. implement a dedicated algo (propagate, etc) for `Element1D` by taking inspiration from `Element2D`.
+
+Does your filtering achieve domain-consistency on D(Z)? Implement a domain-consistent version, write tests to make sure it is domain consistent.
 
 
 Circuit Constraint
@@ -256,6 +437,205 @@ What is the impact of the percentage of variables relaxed (experiment with 5, 10
 What is the impact of the failure limit (experiment with 50, 100 and 1000)?
 Which parameter setting work best? How would you choose it?
 
+
+Table Constraint
+================
+
+The table constraint (also called extension constraint)
+specify the list of solutions (tuples) assignable to a vector of variables.
+
+More precisely, given an array `X` containing `n` variables, and an array `T` of size `m*n`, this constraint holds:
+
+.. math::
+
+    \exists i: \forall\ j\ T_{i,j} = X_j
+
+That is, each line of the table is a valid assignment to `X`.
+
+Here is an example of a table, with five tuples and four variables:
+
++-------------+------+------+------+------+
+| Tuple index | X[0] | X[1] | X[2] | X[3] |
++=============+======+======+======+======+
+|           1 |    0 |    1 |    2 |    3 |
++-------------+------+------+------+------+
+|           2 |    0 |    0 |    3 |    2 |
++-------------+------+------+------+------+
+|           3 |    2 |    1 |    0 |    3 |
++-------------+------+------+------+------+
+|           4 |    3 |    2 |    1 |    2 |
++-------------+------+------+------+------+
+|           5 |    3 |    0 |    1 |    1 |
++-------------+------+------+------+------+
+
+In this particular example, the assignment `X={2, 1, 0, 3}` is then valid, but not `X={4, 3, 3, 3}` as there are no
+such line in the table.
+
+Many algorithms exists to filter table constraints.
+
+One of the fastest filtering algorithm nowadays is Compact Table (CT) [CT2016]_.
+In this exercise you'll implement a simple version of CT.
+
+CT works in two steps:
+
+1. Compute the list of supported tuples. A tuple `T[i]` is supported if, *for each* element `j` of the tuple,
+  the domain of the variable `X[j]` contains the value `T[i][j]`.
+2. Filter the domains. For each variable `x[j]` and value `v` in its
+  domain, the value `v` can be removed if it's not used by any supported tuple.
+
+
+
+
+
+Your task is to terminate the implementation in
+`TableCT.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/engine/constraints/TableCT.java?at=master>`_.
+
+
+`TableCT` maintains for each pair
+variable/value the set of tuples the pair maintains as an array of bitsets:
+
+.. code-block:: java
+
+    private BitSet[][] supports;
+
+
+where `supports[j][v]` is
+the (bit)set of supported tuples for the assignment `x[j]=v`.
+
+Example
+-------
+
+As an example, consider that variable `x[0]` has domain `{0, 1, 3}`. Here are some values for `supports`:
+`supports[0][0] = {1, 2}`
+`supports[0][1] = {}`
+`supports[0][3] = {4,5}`
+
+We can infer two things from this example: first, value `1` does not support any tuples, so it can be removed safely
+from the domain of `x[0]`. Moreover, the tuples supported by `x[0]` is the union of the tuples supported by its values;
+we immediately see that tuple `3` is not supported by `x[0]` and can be discarded from further calculations.
+
+If we push the example further, and we say that variable `x[2]` has domain `{0, 1}`, we immediately see that tuples `1`
+and `2` are not supported by variable `x[2]`, and, as such, can be discarded. From this, we can infer that the value
+`0` can be removed from variable `x[0]` as they don't support any tuple anymore.
+
+
+Using bit sets
+--------------
+
+You may have assumed that the type of `supports` would have been `List<Integer>[][] supportedByVarVal`.
+This is not the solution used by CT.
+
+CT uses the concept of bit sets. A bit set is an array-like data structure that stores bits. Each bit is accessible by
+its index. A bitset is in fact composed of an array of `Long`, that we call in this context a *word*.
+Each of these words store 64 bits from the bitset.
+
+Using this structures is convenient for our goal:
+
+* Each supported tuple is encoded as a `1` in the bitset. `0` encodes unsupported tuples. In the traditional list/array
+  representation, each supported tuple would have taken 32 bits to be represented.
+* Doing intersection and union of bit sets (and these are the main operation that will be made on `supportedByVarVal`)
+  is very easy, thanks to the usage of bitwise operators included in all modern CPUs.
+
+Java provides a default implementation of bit sets in the class BitSet, that we will use in this exercise.
+We encourage you to read its documentation before going on.
+
+A basic implementation
+----------------------
+
+You will implement a version of CT that makes no use of the reversible structure (therefore it is probably much less efficient that the real CT algo).
+
+You have to implement the `propagate()` method of the class `TableCT`. All class variables have already been initialized
+for you.
+
+You "simply" have to compute, for each call to `propagate()`:
+
+* The tuples supported by each variable, which are the union of the tuples supported by the value in the domain of the
+  variable
+* The intersection of the tuples supported by each variable is the set of globally supported tuples
+* You can now intersect the set of globally supported tuples with each variable/value pair in `supports`.
+  If the value supports no tuple (i.e. the intersection is empty) then it can be removed.
+
+Make sure you pass all the tests `TableTest.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/test/java/minicp/engine/constraints/TableTest.java?at=master>`_.
+
+
+Branching Combinators
+======================
+
+Sometimes we wish to branch on a given order on two families of variables, say `x[]` and then `y[]` as show on the next picture.
+A variable in `y` should not be branched on before all the variables in `x` have been decided.
+Furthermore, we may want to apply a specific heuristic on `x` which is different from the heuristic we want to apply on `y` variables.
+
+
+.. image:: _static/combinator.svg
+    :scale: 50
+    :width: 200
+    :alt: combinator
+
+This can be achieved as follows
+
+.. code-block:: java
+
+    IntVar [] x;
+    IntVar [] y;
+    makeDfs(and(firstFail(x),firstFail(y)))
+
+
+The `and` factory method creates a  `ChoiceCombinator.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/search/ChoiceCombinator.java?at=master>`_.
+You must complete its implementation.
+
+Eternity Problem
+======================
+
+Fill in all the gaps in order to solve the Eternity II problem.
+
+Your task is to terminate the implementation in
+`Eternity.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/examples/Eternity.java?at=master>`_.
+
+* Create the table 
+* Model the problem using table constraints
+* Search for a feasible solution using branching combinators
+
+
+Element constraint with array of variables
+==================================================
+
+Implement `Element1DVar.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/engine/constraints/Element1DVar.java?at=master>`_
+
+
+We have already seen the element constraint to index an array of integers `T` by an index variable `x` and link the result with a variable `z`: `T[x]=z`.
+This time the constraint more general since `T` is an array of variables. 
+
+We ask you to imagine and implement the filtering algorithm for `Element1DVar` constraint.
+This filtering algorithm is not trivial, at least if you want to do it efficiently.
+Two directions of implementation are
+
+1. The domain consistent version
+2. The hybrid domain-bound consistent one, assuming the domain of `z` is a full range but not the domain of `x` in which you can create holes (you can start with this one, easier than the full domain consistent one).
+
+
+Check that your implementation passes the tests `Element1DVarTest.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/test/java/minicp/engine/constraints/Element1DVarTest.java?at=master>`_
+Those tests are not checking that the filtering is domain-consistent. Write additional tests to check the domain consistency.
+
+The stable mariage problem
+===========================
+
+Complete the partial model `StableMariage.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/examples/StableMariage.java?at=master>`_
+This model makes use of the `Element1DVar` constraint you have just implemented and is also a good example of manipulation of logical and reified constraints.
+Check that you discover the 6 solutions.
+
+The absolute value constraint
+==============================
+
+Implement `Absolute.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/engine/constraints/Absolute.java?at=master>`_
+
+
+Again you will realize that several directions of implementation are possible
+
+1. The full domain consistent version
+2. An hybrid domain-bound consistent one
+
+
+Check that your implementation passes the tests `AbsoluteTest.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/test/java/minicp/engine/constraints/AbsoluteTest.java?at=master>`_
 
 Cumulative Constraint: Decomposition
 ====================================
@@ -456,7 +836,7 @@ activity (if needed) to the earliest slot when it can be executed without violat
             if (!start[i].isBound()) {
                 // j is the index of the profile rectangle overlapping t
                 int j = profile.rectangleIndex(start[i].getMin());
-                // TODO 3: push j to the right
+                // TODO 3: push i to the right
                 // hint:
                 // You need to check that at every-point on the interval
                 // [start[i].getMin() ... start[i].getMin()+duration[i]-1] there is enough space.
@@ -475,125 +855,7 @@ Check that your implementation passes the tests `CumulativeTest.java <https://bi
 .. [TT2015] Gay, S., Hartert, R., & Schaus, P. (2015, August). Simple and scalable time-table filtering for the cumulative constraint. In International Conference on Principles and Practice of Constraint Programming (pp. 149-157). Springer.
 
 
-Table Constraint
-================
 
-The table constraint (also called extension constraint)
-specify the list of solutions (tuples) assignable to a vector of variables.
-
-More precisely, given an array `X` containing `n` variables, and an array `T` of size `m*n`, this constraint holds:
-
-.. math::
-
-    \exists i: \forall\ j\ T_{i,j} = X_j
-
-That is, each line of the table is a valid assignment to `X`.
-
-Here is an example of a table, with five tuples and four variables:
-
-+-------------+------+------+------+------+
-| Tuple index | X[0] | X[1] | X[2] | X[3] |
-+=============+======+======+======+======+
-|           1 |    0 |    1 |    2 |    3 |
-+-------------+------+------+------+------+
-|           2 |    0 |    0 |    3 |    2 |
-+-------------+------+------+------+------+
-|           3 |    2 |    1 |    0 |    3 |
-+-------------+------+------+------+------+
-|           4 |    3 |    2 |    1 |    2 |
-+-------------+------+------+------+------+
-|           5 |    3 |    0 |    1 |    1 |
-+-------------+------+------+------+------+
-
-In this particular example, the assignment `X={1, 1, 4, 3}` is then valid, but not `X={4, 3, 3, 3}` as there are no
-such line in the table.
-
-Many algorithms exists to filter table constraints.
-
-One of the fastest filtering algorithm nowadays is Compact Table (CT) [CT2016]_.
-In this exercise you'll implement a simple version of CT.
-
-CT works in two steps:
-
-1. Compute the list of supported tuples. A tuple `T[i]` is supported if, *for each* element `j` of the tuple,
-  the domain of the variable `X[j]` contains the value `T[i][j]`.
-2. Filter the domains. For each variable `x[j]` and value `v` in its
-  domain, the value `v` can be removed if it's not used by any supported tuple.
-
-
-
-
-
-Your task is to terminate the implementation in
-`TableCT.java <https://bitbucket.org/pschaus/minicp/src/HEAD/src/main/java/minicp/engine/constraints/TableCT.java?at=master>`_.
-
-
-`TableCT` maintains for each pair
-variable/value the set of tuples the pair maintains as an array of bitsets:
-
-.. code-block:: java
-
-    private BitSet[][] supports;
-
-
-where `supports[j][v]` is
-the (bit)set of supported tuples for the assignment `x[j]=v`.
-
-Example
--------
-
-As an example, consider that variable `x[0]` has domain `{0, 1, 3}`. Here are some values for `supports`:
-`supportes[0][0] = {1, 2}`
-`supportes = {}`
-`supportes = {4, 5}`
-
-We can infer two things from this example: first, value `1` does not support any tuples, so it can be removed safely
-from the domain of `x[0]`. Moreover, the tuples supported by `x[0]` is the union of the tuples supported by its values;
-we immediately see that tuple `3` is not supported by `x[0]` and can be discarded from further calculations.
-
-If we push the example further, and we say that variable `x[2]` has domain `{0, 1}`, we immediately see that tuples `0`
-and `1` are not supported by variable `x[2]`, and, as such, can be discarded. From this, we can infer that the value
-`0` can be removed from variable `x[0]` as they don't support any tuple anymore.
-
-
-Using bit sets
---------------
-
-As you may have seen, we did not describe the type of `supportedByVarVal`. You may have assumed that is was
-`List<Integer>[][] supportedByVarVal`. This is not the solution used by CT.
-
-CT uses the concept of bit sets. A bit set is an array-like data structure that stores bits. Each bit is accessible by
-its index. A bitset is in fact composed of an array of `Long`, that we call in this context a *word*.
-Each of these words store 64 bits from the bitset.
-
-Using this structures is convenient for our goal:
-
-* Each supported tuple is encoded as a `1` in the bitset. `0` encodes unsupported tuples. In the traditional list/array
-  representation, each supported tuple would have taken 32 bits to be represented.
-* Doing intersection and union of bit sets (and these are the main operation that will be made on `supportedByVarVal`)
-  is very easy, thanks to the usage of bitwise operators included in all modern CPUs.
-
-Java provides a default implementation of bit sets in the class BitSet, that we will use in this exercise.
-We encourage you to read its documentation before going on.
-
-A basic implementation
-----------------------
-
-In the first part of this exercise, you will implement a version of CT that makes no use of the reversible structure
-of the propagator, that we will explain in the next subsection.
-
-You have to implement the `propagate()` function of the class `TableCT`. All class variables have already been init
-for you.
-
-For now, you "simply" have to compute, for each call to `propagate()`:
-
-* The tuples supported by each variable, which are the union of the tuples supported by the value in the domain of the
-  variable
-* The intersection of the tuples supported by each variable is the set of globally supported tuples
-* You can now intersect the set of globally supported tuples with each variable/value pair in `supportedByVarVal`.
-  If the value supports no tuple (i.e. the intersection is empty) then it can be removed.
-
-Once it's done and working (run the tests!) you can go to the next part of this exercise.
 
 ..
 .. A reversible implementation
@@ -652,11 +914,6 @@ AllDifferent Forward Checking (optional)
 Implement a dedicated algorithm for the all-different.
 Whenever a variable is bound to a value, this value is removed from the domain of other variables.
 
-
-Implement a domain iterator (optional)
-============================
-
-TODO
 
 
 

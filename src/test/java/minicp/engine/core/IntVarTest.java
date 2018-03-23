@@ -17,10 +17,12 @@ package minicp.engine.core;
 
 import minicp.util.InconsistencyException;
 import minicp.util.NotImplementedException;
+import minicp.util.NotImplementedExceptionAssume;
 import org.junit.Test;
-
-import java.util.*;
-import java.util.stream.IntStream;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 import static minicp.cp.Factory.*;
@@ -70,6 +72,38 @@ public class IntVarTest {
             assertTrue(x.contains(i));
         }
         assertFalse(x.contains(-1));
+
+    }
+
+    @Test
+    public void testIntVarView() {
+        Solver cp  = makeSolver();
+
+        IntVar x = plus(mul(plus(makeIntVar(cp,10),1),2),-1); // 2*(x+1)-1 = 2x+1 D(x)= {1,3,5,...,19}
+        IntVar y = plus(minus(mul(plus(makeIntVar(cp,10),-1),2)),-1); // (-2*(x-1))-1 = -2x+1 D(x)= {-17,-15,..,1}
+
+        cp.getTrail().push();
+
+
+        try {
+
+            assertFalse(x.isBound());
+            assertEquals(x.getMin(),1);
+            assertEquals(x.getMax(),19);
+            assertFalse(x.contains(2));
+            x.remove(5);
+            assertFalse(x.contains(5));
+
+            assertFalse(y.isBound());
+            assertEquals(y.getMin(),-17);
+            assertEquals(y.getMax(),1);
+            assertFalse(x.contains(-2));
+            x.remove(-5);
+            assertFalse(x.contains(-5));
+
+        } catch(InconsistencyException e) { fail("should not fail here");}
+
+
 
     }
 
@@ -155,7 +189,7 @@ public class IntVarTest {
 
 
         } catch (NotImplementedException e) {
-            e.print();
+            NotImplementedExceptionAssume.fail(e);
         }
     }
 
@@ -200,7 +234,7 @@ public class IntVarTest {
 
 
         } catch (NotImplementedException e) {
-            e.print();
+            NotImplementedExceptionAssume.fail(e);
         }
     }
 
@@ -218,7 +252,7 @@ public class IntVarTest {
             @Override
             public void post() throws InconsistencyException {
                 x.whenBind(() -> propagateCalled  = true);
-                y.whenDomainChange(() -> propagateCalled = true);
+                y.whenBoundsChange(() -> propagateCalled = true);
             }
         };
 
@@ -241,7 +275,7 @@ public class IntVarTest {
             propagateCalled = false;
             y.remove(2);
             cp.fixPoint();
-            assertTrue(propagateCalled);
+            assertFalse(propagateCalled);
 
         } catch (InconsistencyException inconsistency) {
             fail("should not fail");
@@ -286,7 +320,7 @@ public class IntVarTest {
             }
 
         } catch (NotImplementedException e) {
-            e.print();
+            NotImplementedExceptionAssume.fail(e);
         }
     }
 
@@ -333,20 +367,32 @@ public class IntVarTest {
             }
 
         } catch (NotImplementedException e) {
-            e.print();
+            NotImplementedExceptionAssume.fail(e);
         }
     }
 
     @Test
-    public void domainIterator() {
-        Solver cp = new Solver();
-        Set<Integer> s = new HashSet<Integer>(Arrays.asList(new Integer(2),new Integer(5),new Integer(8)));
-        IntVar x = new IntVarImpl(cp,s);
-        int[] dest = new int[4];
-        x.fillArray(dest);
-        assertTrue(IntStream.of(dest).anyMatch(y -> y == 2));
-        assertTrue(IntStream.of(dest).anyMatch(y -> y == 5));
-        assertTrue(IntStream.of(dest).anyMatch(y -> y == 8));
-        assertTrue(dest[3]==0);
+    public void fillArray() {
+
+        try {
+            Solver cp = new Solver();
+
+            IntVar x = plus(mul(minus(makeIntVar(cp, 5)), 3), 5); // D(x)= {-7,-4,-1,2,5}
+            int[] values = new int[10];
+            int s = x.fillArray(values);
+            HashSet<Integer> dom = new HashSet<Integer>();
+            for (int i = 0; i < s; i++) {
+                dom.add(values[i]);
+            }
+            System.out.println(x);
+            System.out.println(dom);
+            System.out.println(s);
+            HashSet<Integer> expectedDom = new HashSet<Integer>();
+            Collections.addAll(expectedDom, -7, -4, -1, 2, 5);
+            assertEquals(expectedDom, dom);
+
+        } catch (NotImplementedException e) {
+            NotImplementedExceptionAssume.fail(e);
+        }
     }
 }

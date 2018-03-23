@@ -20,16 +20,12 @@ import minicp.util.InconsistencyException;
 import minicp.util.NotImplementedException;
 
 import java.security.InvalidParameterException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import static org.junit.Assert.*;
 import java.util.Set;
 
 public class IntVarImpl implements IntVar {
 
     private Solver cp;
-    private SparseSetDomain domain;
+    private IntDomain domain;
     private ReversibleStack<Constraint> onDomain;
     private ReversibleStack<Constraint> onBind;
     private ReversibleStack<Constraint> onBounds;
@@ -92,24 +88,7 @@ public class IntVarImpl implements IntVar {
      * @param values
      */
     public IntVarImpl(Solver cp, Set<Integer> values) {
-        assertFalse(values.isEmpty());
-        Integer min = Collections.min(values);
-        Integer max = Collections.max(values);
-        this.cp = cp;
-        cp.registerVar(this);
-        domain = new SparseSetDomain(cp.getTrail(),min.intValue(),max.intValue());
-        onDomain = new ReversibleStack<>(cp.getTrail());
-        onBind  = new ReversibleStack<>(cp.getTrail());
-        onBounds = new ReversibleStack<>(cp.getTrail());
-        for(int i=min.intValue()+1;i<max.intValue();i++){
-            if (!values.contains(new Integer(i))) {
-                try {
-                    domain.remove(i, domListener);
-                } catch (InconsistencyException e) {
-                    min = max; // Shouldn't end up here
-                }
-            }
-        }
+        throw new NotImplementedException("Implement arbitrary domain constructor");
     }
 
 
@@ -161,8 +140,9 @@ public class IntVarImpl implements IntVar {
         return domain.getSize();
     }
 
-    public int[] getValues() {
-        return domain.getValues();
+    @Override
+    public int fillArray(int[] dest) {
+        throw new NotImplementedException("implement fillArray in IntVarImpl");
     }
 
     public boolean contains(int v) {
@@ -183,12 +163,6 @@ public class IntVarImpl implements IntVar {
 
     public int removeAbove(int v) throws InconsistencyException {
         return domain.removeAbove(v, domListener);
-    }
-
-    public int fillArray(int [] dest) {
-        int s = domain.getSize();
-        System.arraycopy(domain.getValues(), 0, dest, 0, s);
-        return s;
     }
 
 }

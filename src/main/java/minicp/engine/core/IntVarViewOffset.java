@@ -18,6 +18,7 @@ package minicp.engine.core;
 
 
 import minicp.util.InconsistencyException;
+import minicp.util.NotImplementedException;
 
 public class IntVarViewOffset implements IntVar {
 
@@ -79,8 +80,9 @@ public class IntVarViewOffset implements IntVar {
         return x.getSize();
     }
 
-    public int[] getValues() {
-        return x.getValues();
+    @Override
+    public int fillArray(int[] dest) {
+        throw new NotImplementedException("implement fillArray in IntVarViewOffset");
     }
 
     @Override
@@ -111,18 +113,6 @@ public class IntVarViewOffset implements IntVar {
     @Override
     public int removeAbove(int v) throws InconsistencyException {
         return x.removeAbove(v - o);
-    }
-
-    /**
-     * set the first values of <code>dest</code> to the ones
-     * present in the set
-     * @param dest, an array large enough dest.length >= getSize()
-     * @return the size of the set
-     */
-    public int fillArray(int [] dest) {
-        int s = x.getSize();
-        System.arraycopy(x.getValues(), 0, dest, 0, s);
-        return s;
     }
 
 }

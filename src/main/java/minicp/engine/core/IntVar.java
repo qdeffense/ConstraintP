@@ -86,12 +86,18 @@ public interface IntVar {
     int getSize();
 
     /**
+     * Copy the values of the domain
+     * @param dest, an array large enough dest.length >= getSize()
+     * @return the size of the domain and dest[0,...,getSize-1] contains
+     *         the values in the domain in an arbitrary order
+     */
+    int fillArray(int [] dest);
+
+    /**
      * Return true if the domain of the variable has a single value
      * @return true if the domain of the variable has a single value
      */
     boolean isBound();
-
-    int[] getValues();
 
     /**
      * @param v
@@ -128,13 +134,5 @@ public interface IntVar {
      * @throws InconsistencyException
      */
     int removeAbove(int v) throws InconsistencyException;
-
-    /**
-     * set the first values of <code>dest</code> to the ones
-     * present in the set
-     * @param dest, an array large enough dest.length >= getSize()
-     * @return the size of the set
-     */
-    public int fillArray(int [] dest);
 
 }

@@ -123,15 +123,13 @@ public class IntVarViewOffsetTest {
 
         Solver cp = new Solver();
 
-        IntVar x = plus(makeIntVar(cp, 10),1);
-        IntVar y = plus(makeIntVar(cp, 10),1);
+        IntVar x = plus(makeIntVar(cp, 10),2);
 
         Constraint cons = new Constraint(cp) {
 
             @Override
             public void post() throws InconsistencyException {
-                x.whenBind(() -> propagateCalled  = true);
-                y.whenDomainChange(() -> propagateCalled = true);
+                x.whenBoundsChange(() -> propagateCalled = true);
             }
         };
 
@@ -140,19 +138,7 @@ public class IntVarViewOffsetTest {
             x.remove(9);
             cp.fixPoint();
             assertFalse(propagateCalled);
-            x.remove(10);
-            cp.fixPoint();
-            assertFalse(propagateCalled);
-            x.assign(5);
-            cp.fixPoint();
-            assertTrue(propagateCalled);
-            propagateCalled = false;
-            assertFalse(y.contains(11));
-            y.remove(11);
-            cp.fixPoint();
-            assertFalse(propagateCalled);
-            propagateCalled = false;
-            y.remove(3);
+            x.remove(11);
             cp.fixPoint();
             assertTrue(propagateCalled);
 

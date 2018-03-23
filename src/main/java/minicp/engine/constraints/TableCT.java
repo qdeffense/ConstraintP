@@ -43,7 +43,7 @@ public class TableCT extends Constraint {
         this.x = new IntVar[x.length];
         this.table = table;
 
-        // Allocate supportedByVarVal
+        // Allocate supports
         supports = new BitSet[x.length][];
         for (int i = 0; i < x.length; i++) {
             this.x[i] = minus(x[i],x[i].getMin()); // map the variables domain to start at 0
@@ -52,7 +52,7 @@ public class TableCT extends Constraint {
                 supports[i][j] = new BitSet();
         }
 
-        // Set values in supportedByVarVal, which contains all the tuples supported by each var-val pair
+        // Set values in supports, which contains all the tuples supported by each var-val pair
         for (int i = 0; i < table.length; i++) { //i is the index of the tuple (in table)
             for (int j = 0; j < x.length; j++) { //j is the index of the current variable (in x)
                 if (x[j].contains(table[i][j])) {
@@ -79,19 +79,9 @@ public class TableCT extends Constraint {
 
         // TODO 1: compute supportedTuples as
         //       supportedTuples = (supports[0][x[0].getMin()] | ... | supports[0][x[0].getMax()] ) & ... &
-        //                         (supports[x.length][x[0].getMin()] | ... | supports[x.length][x[0].getMax()] )
+        //                         (supports[x.length-1][x[x.length-1].getMin()] | ... | supports[x.length-1][x[x.length-1].getMax()] )
         // "|" is the bitwise "or" method on BitSet
         // "&" is bitwise "and" method on BitSet
-
-        BitSet curSupport = new BitSet(table.length);
-
-        for (int i = 0; i < x.length; i++) {
-            curSupport.set(0,table.length, false);
-            for (int j = x[i].getMin(); j <= x[i].getMax() ; j++) {
-                curSupport.or(supports[i][j]);
-            }
-            supportedTuples.and(curSupport);
-        }
 
 
         // TODO 2
@@ -100,9 +90,6 @@ public class TableCT extends Constraint {
                 if (x[i].contains(v)) {
                     // TODO 2: the condition for removing the value v from x[i] is to check if
                     //         there is no intersection between supportedTuples and the support[i][v]
-                    if (!(supportedTuples.intersects(supports[i][v]))) {
-                        x[i].remove(v);
-                    }
                 }
             }
         }

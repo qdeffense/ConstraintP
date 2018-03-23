@@ -22,6 +22,7 @@ import minicp.search.DFSearch;
 import minicp.util.InconsistencyException;
 
 
+import java.util.Arrays;
 import java.util.Set;
 
 public class Factory {
@@ -32,6 +33,7 @@ public class Factory {
 
     static public IntVar mul(IntVar x, int a) {
         if (a == 0) return makeIntVar(x.getSolver(),0,0);
+        else if (a == 1) return x;
         else if (a < 0) {
             return minus(new IntVarViewMul(x,-a));
         } else {
@@ -49,6 +51,12 @@ public class Factory {
 
     static public IntVar minus(IntVar x, int v) {
         return new IntVarViewOffset(x,-v);
+    }
+
+    static public IntVar abs(IntVar x) throws InconsistencyException {
+        IntVar r = makeIntVar(x.getSolver(), 0, x.getMax());
+        x.getSolver().post(new Absolute(x, r));
+        return r;
     }
 
     /**
@@ -115,6 +123,20 @@ public class Factory {
 
     // -------------- constraints -----------------------
 
+    static public IntVar maximum(IntVar ... x) throws InconsistencyException {
+        Solver cp = x[0].getSolver();
+        int min = Arrays.stream(x).mapToInt(IntVar::getMin).min().getAsInt();
+        int max = Arrays.stream(x).mapToInt(IntVar::getMax).max().getAsInt();
+        IntVar y = makeIntVar(cp,min,max);
+        cp.post(new Maximum(x,y));
+        return y;
+    }
+
+    static public IntVar minimum(IntVar ... x) throws InconsistencyException {
+        IntVar[] minusX = Arrays.stream(x).map(Factory::minus).toArray(IntVar[]::new);
+        return minus(maximum(minusX));
+    }
+
     static public void equal(IntVar x, int v) throws InconsistencyException {
         x.assign(v);
         x.getSolver().fixPoint();
@@ -137,6 +159,33 @@ public class Factory {
         Solver cp = x.getSolver();
         cp.post(new IsEqual(b,x,c));
         return b;
+    }
+
+    static public BoolVar isLessOrEqual(IntVar x, final int c)  throws InconsistencyException  {
+        BoolVar b = makeBoolVar(x.getSolver());
+        Solver cp = x.getSolver();
+        cp.post(new IsLessOrEqual(b,x,c));
+        return b;
+    }
+
+    static public BoolVar isLess(IntVar x, final int c)  throws InconsistencyException  {
+        return isLessOrEqual(x,c-1);
+    }
+
+    static public BoolVar isLargerOrEqual(IntVar x, final int c)  throws InconsistencyException  {
+        return isLessOrEqual(minus(x),-c);
+    }
+
+    static public BoolVar isLarger(IntVar x, final int c)  throws InconsistencyException  {
+        return isLargerOrEqual(x,c+1);
+    }
+
+    static public Constraint lessOrEqual(IntVar x, IntVar y) {
+        return new LessOrEqual(x,y);
+    }
+
+    static public Constraint largerOrEqual(IntVar x, IntVar y) {
+        return new LessOrEqual(y,x);
     }
 
     static public Constraint minimize(IntVar x, DFSearch dfs) {

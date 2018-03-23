@@ -18,6 +18,7 @@ package minicp.engine.core;
 
 
 import minicp.util.InconsistencyException;
+import minicp.util.NotImplementedException;
 
 public class IntVarViewOpposite implements IntVar {
 
@@ -77,7 +78,10 @@ public class IntVarViewOpposite implements IntVar {
         return x.getSize();
     }
 
-    public int[] getValues() { return x.getValues(); }
+    @Override
+    public int fillArray(int[] dest) {
+        throw new NotImplementedException("implement fillArray in IntVarViewOpposite");
+    }
 
     @Override
     public boolean isBound() {
@@ -107,18 +111,6 @@ public class IntVarViewOpposite implements IntVar {
     @Override
     public int removeAbove(int v) throws InconsistencyException {
         return - x.removeBelow(-v);
-    }
-
-    /**
-     * set the first values of <code>dest</code> to the ones
-     * present in the set
-     * @param dest, an array large enough dest.length >= getSize()
-     * @return the size of the set
-     */
-    public int fillArray(int [] dest) {
-        int s = x.getSize();
-        System.arraycopy(x.getValues(), 0, dest, 0, s);
-        return s;
     }
 
 }
